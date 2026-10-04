@@ -40,6 +40,11 @@ struct Settings : Markup::Node {
     bool interframeBlending = true;
     bool overscan = true;
     bool pixelAccuracy = false;
+    string stereoMode = "Off";
+    u32 stereoDepth = 20;
+    u32 stereoConvergence = 10;
+    bool stereoSwapEyes = false;
+    bool stereoFullWidth = false;
   } video;
 
   struct Audio {
@@ -169,6 +174,21 @@ struct VideoSettings : VerticalLayout {
     HorizontalLayout pixelAccuracyLayout{this, Size{~0, 0}};
       CheckLabel pixelAccuracyOption{&pixelAccuracyLayout, Size{0, 0}, 5};
       Label pixelAccuracyHint{&pixelAccuracyLayout, Size{~0, layoutVertSize}};
+  //
+    Label stereoLabel{this, Size{~0, 0}, 5};
+    HorizontalLayout stereoModeLayout{this, Size{~0, 0}};
+      Label stereoModeLabel{&stereoModeLayout, Size{0, 0}};
+      ComboButton stereoModeList{&stereoModeLayout, Size{0, 0}};
+      CheckLabel stereoSwapEyes{&stereoModeLayout, Size{0, 0}};
+      CheckLabel stereoFullWidth{&stereoModeLayout, Size{0, 0}};
+    TableLayout stereoLayout{this, Size{~0, 0}};
+      Label stereoDepthLabel{&stereoLayout, Size{0, 0}};
+      Label stereoDepthValue{&stereoLayout, Size{50_sx, 0}};
+      HorizontalSlider stereoDepthSlider{&stereoLayout, Size{~0, 0}};
+      Label stereoConvergenceLabel{&stereoLayout, Size{0, 0}};
+      Label stereoConvergenceValue{&stereoLayout, Size{50_sx, 0}};
+      HorizontalSlider stereoConvergenceSlider{&stereoLayout, Size{~0, 0}};
+    Label stereoHint{this, Size{~0, 0}};
   //
     Label videoLabel{this, Size{~0, 0}, 5};
     HorizontalLayout videoDriverLayout{this, Size{~0, 0}};

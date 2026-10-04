@@ -67,6 +67,44 @@ auto VideoSettings::construct() -> void {
   pixelAccuracyLayout.setAlignment(1).setPadding(12_sx, 0);
   pixelAccuracyHint.setText("Use pixel-accurate emulation where available").setFont(Font().setSize(7.0)).setForegroundColor(SystemColor::Sublabel);
 
+  stereoLabel.setText("Stereoscopic 3D (Nintendo 64 / PlayStation, experimental)").setFont(Font().setBold());
+  stereoModeLayout.setPadding(12_sx, 0);
+  stereoModeLabel.setText("Mode:");
+  for(auto mode : {"Off", "Side by Side"}) {
+    ComboButtonItem item{&stereoModeList};
+    item.setText(mode);
+    if(settings.video.stereoMode == mode) item.setSelected();
+  }
+  stereoModeList.onChange([&] {
+    settings.video.stereoMode = stereoModeList.selected().text();
+    bool enabled = settings.video.stereoMode == "Side by Side";
+    stereoLayout.setEnabled(enabled);
+    stereoSwapEyes.setEnabled(enabled);
+    stereoFullWidth.setEnabled(enabled);
+  }).doChange();
+  stereoSwapEyes.setText("Swap Eyes").setChecked(settings.video.stereoSwapEyes).onToggle([&] {
+    settings.video.stereoSwapEyes = stereoSwapEyes.checked();
+  });
+  stereoFullWidth.setText("Full SBS Width").setChecked(settings.video.stereoFullWidth).onToggle([&] {
+    settings.video.stereoFullWidth = stereoFullWidth.checked();
+  });
+  stereoLayout.setSize({3, 2}).setPadding(12_sx, 0);
+  stereoLayout.column(0).setAlignment(1.0);
+  stereoDepthLabel.setText("Depth:");
+  stereoDepthValue.setAlignment(0.5);
+  stereoDepthSlider.setLength(101).setPosition(settings.video.stereoDepth).onChange([&] {
+    settings.video.stereoDepth = stereoDepthSlider.position();
+    stereoDepthValue.setText({settings.video.stereoDepth, "%"});
+  }).doChange();
+  stereoConvergenceLabel.setText("Convergence:");
+  stereoConvergenceValue.setAlignment(0.5);
+  stereoConvergenceSlider.setLength(101).setPosition(settings.video.stereoConvergence).onChange([&] {
+    settings.video.stereoConvergence = stereoConvergenceSlider.position();
+    stereoConvergenceValue.setText(settings.video.stereoConvergence);
+  }).doChange();
+  stereoHint.setText("Reload the game to apply. Adjust depth and convergence for each game.\nFull SBS Width preserves each eye's aspect ratio; otherwise use your display's SBS mode.")
+    .setFont(Font().setSize(7.0)).setForegroundColor(SystemColor::Sublabel);
+
   videoLabel.setText("Device Settings").setFont(Font().setBold());
   videoDriverList.onChange([&] {
     if(videoDriverList.selected().text() != settings.video.driver) {

@@ -22,7 +22,7 @@ GPU::Color GPU::Color::table[65536];
 auto GPU::load(Node::Object parent) -> void {
   node = parent->append<Node::Object>("GPU");
 
-  screen = node->append<Node::Video::Screen>("Screen", 640, 512);
+  screen = node->append<Node::Video::Screen>("Screen", stereo.enabled ? 1280 : 640, 512);
   screen->setRefresh(std::bind_front(&GPU::Blitter::refresh, &blitter));
   screen->colors((1 << 24) + (1 << 15), [&](n32 color) -> n64 {
     if(color < (1 << 24)) {
@@ -39,7 +39,7 @@ auto GPU::load(Node::Object parent) -> void {
       return a << 48 | r << 32 | g << 16 | b << 0;
     }
   });
-  screen->setSize(640, 512);
+  screen->setSize(stereo.enabled && stereo.fullWidth ? 1280 : 640, 512);
 
   vram.allocate(1_MiB);
   for(u32 y : range(512)) {
@@ -55,6 +55,9 @@ auto GPU::unload() -> void {
   renderer.kill();
   debugger = {};
   vram.reset();
+  for(auto& eye : eyeVRAM) eye.reset();
+  for(auto& eye : blitter.eyeVRAM) eye.reset();
+  projections.reset(false);
   node->remove(screen);
   screen.reset();
   node.reset();
@@ -92,6 +95,7 @@ auto GPU::main() -> void {
 }
 
 auto GPU::frame() -> void {
+  if(stereo.enabled) projections.nextFrame();
   auto newDivider = dotclockDivider();
   if(display.dotclock != newDivider) io.dotcounter = 0;
   display.dotclock = newDivider;
@@ -141,8 +145,21 @@ auto GPU::power(bool reset) -> void {
   queue.gp1 = {};
 
   frame();
+  resetStereo();
   renderer.power();
   blitter.power();
+}
+
+auto GPU::resetStereo() -> void {
+  projections.reset(stereo.enabled);
+  for(auto& eye : eyeVRAM) {
+    if(stereo.enabled) {
+      eye.allocate(1_MiB);
+      memory::copy(eye.data, vram.data, 1_MiB);
+    } else {
+      eye.reset();
+    }
+  }
 }
 
 }

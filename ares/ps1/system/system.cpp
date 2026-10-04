@@ -18,6 +18,11 @@ auto load(Node::System& node, string name) -> bool {
 }
 
 auto option(string name, string value) -> bool {
+  if(name == "Stereoscopic 3D") gpu.stereo.enabled = value.boolean();
+  if(name == "Stereo Depth") gpu.stereo.depth = min(value.natural(), 100ull);
+  if(name == "Stereo Convergence") gpu.stereo.convergence = min(value.natural(), 100ull);
+  if(name == "Stereo Swap Eyes") gpu.stereo.swapEyes = value.boolean();
+  if(name == "Stereo Full Width") gpu.stereo.fullWidth = value.boolean();
   if(name == "Homebrew Mode") system.homebrewMode = value.boolean();
   return true;
 }

@@ -52,6 +52,12 @@ endif()
 
 add_subdirectory(tools/sourcery)
 
+option(ARES_BUILD_STEREO_TESTS "Build stereoscopic rendering regression tests (N64 and PS1 required)" OFF)
+if(ARES_BUILD_STEREO_TESTS)
+  enable_testing()
+  add_subdirectory(tests/stereo)
+endif()
+
 message_configuration()
 
 add_subdirectory(.github)

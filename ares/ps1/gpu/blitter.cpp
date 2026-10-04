@@ -79,9 +79,12 @@ auto GPU::Blitter::queue() -> void {
     memory::copy(vram.data + startOffset, self.vram.data + startOffset, bytesPerRow);
   }
 
+  if(self.stereo.enabled) for(unsigned eye = 0; eye < 2; ++eye) {
+    memory::copy(eyeVRAM[eye].data, self.eyeVRAM[eye].data, 1_MiB);
+  }
   self.vram.mutex.unlock();
 
-  self.screen->setViewport(0, 0, width, height);
+  self.screen->setViewport(0, 0, width * (self.stereo.enabled ? 2 : 1), height);
   self.screen->frame();
   scheduler.exit(Event::Frame);
 }
@@ -90,6 +93,26 @@ auto GPU::Blitter::refresh() -> void {
   if(blank) return;
 
   auto output = self.screen->pixels(1).data();
+
+  if(self.stereo.enabled) {
+    // Pack native-resolution eyes; the screen's logical size selects half/full
+    // SBS without changing the core's emulated display timings.
+    for(unsigned eye = 0; eye < 2; ++eye) {
+      for(s32 y = 0; y < th && y + ty < s32(height); ++y) {
+        if(y + ty < 0) continue;
+        u32 source = ((y + sy) * 1024 + sx) * 2;
+        for(s32 x = 0; x < tw && x + tx < s32(width); ++x) {
+          if(x + tx < 0) continue;
+          u32 color = depth == 0 ? (1 << 24 | eyeVRAM[eye].readHalf(source + x * 2) & 0x7fff)
+                                : (eyeVRAM[eye].readByte(source + x * 3 + 0)
+                                 | eyeVRAM[eye].readByte(source + x * 3 + 1) << 8
+                                 | eyeVRAM[eye].readByte(source + x * 3 + 2) << 16);
+          output[(y + ty) * 1280 + eye * width + x + tx] = color;
+        }
+      }
+    }
+    return;
+  }
 
   //15bpp
   if(depth == 0) {
@@ -122,4 +145,8 @@ auto GPU::Blitter::refresh() -> void {
 
 auto GPU::Blitter::power() -> void {
   vram.allocate(1_MiB);
+  for(auto& eye : eyeVRAM) {
+    if(self.stereo.enabled) eye.allocate(1_MiB);
+    else eye.reset();
+  }
 }

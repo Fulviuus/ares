@@ -728,6 +728,9 @@ auto CPU::RTP(v16 vector, bool last) -> void {
   s32 sy = checkMac<0>(dv * ir.y + ofy) >> 16;
   pushScreenX(sx);
   pushScreenY(sy);
+  if(gpu.stereo.enabled && screen[3].z && h) {
+    gpu.projections.record(screen[2].x, screen[2].y, float(h) / float(screen[3].z));
+  }
   if(!last) return;
 
   s64 sz = setMac<0>(dv * dqa + dqb);

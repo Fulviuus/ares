@@ -137,6 +137,13 @@ public:
 
 	void set_quirks(const Quirks &quirks);
 
+	// Configure before submitting commands; only auxiliary eye processors use this.
+	void set_stereo(double separation, double convergence)
+	{
+		stereo_separation = separation;
+		stereo_convergence = convergence;
+	}
+
 	// Interact with memory.
 	void *begin_read_rdram();
 	void end_write_rdram();
@@ -274,6 +281,11 @@ private:
 
 	void enqueue_coherency_operation(CoherencyOperation &&op);
 	void drain_command_ring();
+	double stereo_separation = 0.0;
+	double stereo_convergence = 10.0;
+	unsigned stereo_width = 320;
+	bool stereo_primitive_depth = false;
+	void apply_stereo(TriangleSetup &setup, AttributeSetup &attr);
 	void decode_triangle_setup(TriangleSetup &setup, const uint32_t *words) const;
 
 	Quirks quirks;

@@ -5,6 +5,7 @@
 #include <xxhash.h>
 #include <float.h>
 #include <ares/ares.hpp>
+#include <ares/stereo.hpp>
 #include <nall/float-env.hpp>
 #include <nall/hashset.hpp>
 #include <nall/queue.hpp>

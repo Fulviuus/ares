@@ -33,6 +33,7 @@ auto System::unserialize(serializer& s) -> bool {
 
   if(synchronize) power(/* reset = */ false);
   serialize(s, synchronize);
+  if(vulkan.stereo.enabled) vulkan.resetStereo();
   return true;
 }
 

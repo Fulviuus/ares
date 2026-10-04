@@ -380,6 +380,7 @@ ares_add_sources(
     vulkan/parallel-rdp/parallel-rdp/rdp_device.hpp
     vulkan/parallel-rdp/parallel-rdp/rdp_dump_write.hpp
     vulkan/parallel-rdp/parallel-rdp/rdp_renderer.hpp
+    vulkan/parallel-rdp/parallel-rdp/rdp_stereo.hpp
     vulkan/parallel-rdp/parallel-rdp/video_interface.hpp
     vulkan/parallel-rdp/parallel-rdp/worker_thread.hpp
     vulkan/parallel-rdp/vulkan/buffer.hpp

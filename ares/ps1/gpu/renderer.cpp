@@ -61,19 +61,19 @@ auto GPU::Render::texel(Point p) const -> u16 {
   s32 ty = u8(p.y) & texelMaskY | texelOffsetY;
 
   if(textureDepth == 0) {  //4bpp
-    u16 index = gpu.vram2D[ty + by & 511][tx / 4 + bx & 1023];
+    u16 index = readPixel(tx / 4 + bx, ty + by);
     u16 entry = index >> (tx & 3) * 4 & 15;
-    return gpu.vram2D[py & 511][px + entry & 1023];
+    return readPixel(px + entry, py);
   }
 
   if(textureDepth == 1) {  //8bpp
-    u16 index = gpu.vram2D[ty + by & 511][tx / 2 + bx & 1023];
+    u16 index = readPixel(tx / 2 + bx, ty + by);
     u16 entry = index >> (tx & 1) * 8 & 255;
-    return gpu.vram2D[py & 511][px + entry & 1023];
+    return readPixel(px + entry, py);
   }
 
   if(textureDepth == 2) {  //16bpp
-    return gpu.vram2D[ty + by & 511][tx + bx & 1023];
+    return readPixel(tx + bx, ty + by);
   }
 
   return 0;
@@ -152,7 +152,7 @@ auto GPU::Render::pixel(Point point, Color rgb, Point uv) -> void {
     above = dither(point, above);
   }
 
-  u16 input = gpu.vram2D[point.y & 511][point.x & 1023];
+  u16 input = readPixel(point.x, point.y);
   Color below = Color::from16(input);
 
   if constexpr(Flags & Alpha) {
@@ -160,7 +160,7 @@ auto GPU::Render::pixel(Point point, Color rgb, Point uv) -> void {
   }
 
   if(input >> 15 & checkMaskBit) return;
-  gpu.vram2D[point.y & 511][point.x & 1023  ] = above.to16() | maskBit << 15;
+  writePixel(point.x, point.y, above.to16() | maskBit << 15);
 }
 
 template<u32 Flags>
@@ -319,7 +319,7 @@ auto GPU::Render::fill() -> void {
   auto color = v0.to16();
   for(u32 y : range(size.h)) {
     for(u32 x : range(size.w)) {
-      gpu.vram2D[y + v0.y & 511][x + v0.x & 1023] = color;
+      writePixel(x + v0.x, y + v0.y, color);
     }
   }
 //io.pcounter += cost<Flags>(size.width * size.height);
@@ -422,7 +422,50 @@ auto GPU::Render::execute() -> void {
   }
 }
 
+auto GPU::Render::readPixel(u32 x, u32 y) const -> u16 {
+  if(eye < 0) return gpu.vram2D[y & 511][x & 1023];
+  return gpu.eyeVRAM[eye].readHalf(((y & 511) * 1024 + (x & 1023)) * 2);
+}
+
+auto GPU::Render::writePixel(u32 x, u32 y, u16 value) -> void {
+  if(eye < 0) gpu.vram2D[y & 511][x & 1023] = value;
+  else gpu.eyeVRAM[eye].writeHalf(((y & 511) * 1024 + (x & 1023)) * 2, value);
+}
+
+auto GPU::Render::executeStereo() -> void {
+  // Look up all vertices before execution mutates their coordinates. Reject a
+  // whole primitive when any vertex is unknown, avoiding torn HUD polygons.
+  unsigned count = command >= 0x20 && command <= 0x3f ? (command & 8 ? 4 : 3)
+                 : command >= 0x40 && command <= 0x5f ? 2 : 0;
+  Vertex* vertices[] = {&v0, &v1, &v2, &v3};
+  float inverseDepth[4] = {};
+  bool valid = count != 0;
+  for(unsigned i = 0; i < count; ++i) {
+    inverseDepth[i] = gpu.projections.find(vertices[i]->x, vertices[i]->y);
+    valid &= inverseDepth[i] > 0;
+  }
+  for(unsigned index = 0; index < 2; ++index) {
+    auto render = *this;
+    render.eye = index;
+    Vertex* targets[] = {&render.v0, &render.v1, &render.v2, &render.v3};
+    if(valid) for(unsigned i = 0; i < count; ++i) {
+      targets[i]->x += gpu.stereo.offset(inverseDepth[i], gpu.display.width, index);
+    }
+    render.execute();
+  }
+  // Keep guest VRAM, readbacks and game logic identical to mono emulation.
+  execute();
+}
+
 auto GPU::Renderer::queue(Render& render) -> void {
+  if(self.stereo.enabled && render.command != 0x100) {
+    // GTE cache and VRAM uploads belong to the emulation thread. Executing here
+    // preserves their ordering, including games which reuse screen coordinates.
+    self.vram.mutex.lock();
+    render.executeStereo();
+    self.vram.mutex.unlock();
+    return;
+  }
   if constexpr(Accuracy::GPU::Threaded) {
     fifo.await_write(render);
   } else if constexpr(true) {

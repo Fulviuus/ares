@@ -31,7 +31,7 @@ endif()
 
 target_sources(
   ares
-  PRIVATE ares/ares.cpp ares/ares.cpp.in ares/ares.hpp ares/inline.hpp ares/platform.hpp ares/random.hpp ares/types.hpp
+  PRIVATE ares/stereo.hpp ares/ares.cpp ares/ares.cpp.in ares/ares.hpp ares/inline.hpp ares/platform.hpp ares/random.hpp ares/types.hpp
 )
 
 target_sources(

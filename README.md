@@ -7,6 +7,66 @@ It is a descendant of [higan](https://github.com/higan-emu/higan) and [bsnes](ht
 
 It's worth noting that ares takes some uncommon design approaches that essentially trade speed for code clarity. We avoid state machines and bitmasks (when possible). Most cores end up being half the amount of code, but slower. The code is clearer and less spaghettified, especially for systems with lots of processors. C bitfields being non-portable incurs a speedhit. Windows also has a speedhit over Linux due to its ABI needing more instructions to switch contexts.
 
+Experimental side-by-side 3D (this fork)
+----------------------------------------
+
+This fork adds stereoscopic output for Nintendo 64 (including 64DD) and
+PlayStation. Open **Settings → Video** to show the **Configuration** window,
+then select **Stereoscopic 3D → Mode → Side by Side**. Reload the game after
+changing any stereo setting. Stereo is off by default and does not affect
+other systems.
+
+* **Depth** controls eye separation; zero produces two identical views.
+* **Convergence** moves the plane of zero disparity. Its scale depends on the
+  game's projection, so start with low depth and adjust per game.
+* **Swap Eyes** reverses left and right for displays that expect the other order.
+* **Full SBS Width** preserves each eye's normal aspect ratio. Leave it unchecked
+  for a display's half-SBS mode, which expands each half to the whole screen.
+
+The off-axis projection follows the approach in
+[Dolphin's stereo shader](https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/VideoCommon/GeometryShaderGen.cpp):
+eye separation depends on depth relative to a convergence plane. The local
+`dolphin-3d` Metal stereoscopy implementation was also used as an architectural
+reference. This is an independent implementation for ares' rendering pipelines.
+On macOS it works with ares' **Metal** video driver; N64 rasterization continues
+to use paraLLEl-RDP through **MoltenVK**. No geometry-shader support is required.
+
+Both cores render separate eye images while preserving the original mono
+memory for emulated reads. They must recover depth because their rasterizers
+receive projected coordinates:
+
+* **Nintendo 64:** Z-buffered triangles use projected Z to reconstruct relative
+  depth. Edges and texture/color/depth gradients are transformed together.
+  Rectangles, triangles without Z, and primitives using a constant depth source
+  remain flat. Nonstandard depth mappings can produce incorrect stereo.
+* **PlayStation:** GPU vertices are matched to recent GTE projections. Missing
+  or ambiguous matches stay flat. Games using software transforms or reusing
+  screen coordinates for different depths can have partial or unstable stereo.
+  Sprites and video remain flat.
+
+This is experimental, not a verified game compatibility release. Drawing three
+views costs more CPU/GPU time and memory; PlayStation stereo also renders
+synchronously. Save states retain the normal format and rebuild auxiliary eye
+buffers after loading. Depth settings are global, not saved per game. Rotation,
+cropping, and display shaders which mix adjacent pixels can interfere with SBS
+presentation; start with the normal unrotated, uncropped output.
+
+The optional regression harness needs N64 and PS1 cores and a working Vulkan
+device (MoltenVK on macOS). It uses synthetic scenes and needs no ROM or BIOS:
+
+```sh
+cmake -S . -B build -G Ninja -DARES_BUILD_STEREO_TESTS=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+On macOS, select a full Xcode installation or prefix configure/build commands
+with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. Tests cover
+depth/convergence math, GTE matching, separate eye rasterization, unchanged
+guest memory, zero-depth mono equivalence, eye swapping, CPU/VRAM transfers,
+SBS pixel packing, and N64 2× rendering. Real-game compatibility and non-macOS
+runtime behavior have not yet been verified.
+
 Official Releases
 -----------------
 

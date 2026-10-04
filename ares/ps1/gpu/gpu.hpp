@@ -305,6 +305,11 @@ struct GPU : Thread, Memory::Interface {
   //renderer.cpp
   auto generateTables() -> void;
 
+  Stereo::Settings stereo;
+  Stereo::ProjectionCache projections;
+  Memory::Writable eyeVRAM[2];
+  auto resetStereo() -> void;
+
   struct Render {
     auto weight(Point a, Point b, Point c) const -> s32;
     auto origin(Point a, Point b, Point c, s32 d[3], f32 area, s32 bias[3]) const -> f32;
@@ -321,6 +326,10 @@ struct GPU : Thread, Memory::Interface {
     template<u32 Flags> auto fill() -> void;
     template<u32 Flags> auto cost(u32 pixels) const -> u32;
     auto execute() -> void;
+    auto executeStereo() -> void;
+    auto readPixel(u32 x, u32 y) const -> u16;
+    auto writePixel(u32 x, u32 y, u16 value) -> void;
+    int eye = -1;
 
     u32  command;
     u32  flags;
@@ -386,6 +395,7 @@ struct GPU : Thread, Memory::Interface {
     s32  tw;
     s32  th;
     Memory::Writable vram; // Copy of vram for thread queued blit
+    Memory::Writable eyeVRAM[2];
   } blitter{*this};
 
   u16* vram2D[512];

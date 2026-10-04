@@ -40,6 +40,12 @@ auto GPU::writeGP0(u32 value, bool isThread) -> void {
       if((pixel >> 15 & io.checkMaskBit) == 0) {
         vram2D[y & 511][x & 1023] = value | io.forceMaskBit << 15;
       }
+      if(stereo.enabled) for(auto& eye : eyeVRAM) {
+        u32 address = ((y & 511) * 1024 + (x & 1023)) * 2;
+        if((eye.readHalf(address) >> 15 & io.checkMaskBit) == 0) {
+          eye.writeHalf(address, value | io.forceMaskBit << 15);
+        }
+      }
       value >>= 16;
       if(++io.copy.px >= io.copy.width) {
         io.copy.px = 0;
@@ -394,6 +400,14 @@ auto GPU::writeGP0(u32 value, bool isThread) -> void {
         if((pixel >> 15 & io.checkMaskBit) == 0) {
           vram2D[n9(y + targetY) & 511][n10(x + targetX) & 1023] = pixel | io.forceMaskBit << 15;
         }
+      }
+    }
+    if(stereo.enabled) for(auto& eye : eyeVRAM) {
+      for(u32 y : range(height)) for(u32 x : range(width)) {
+        u32 source = (((y + sourceY) & 511) * 1024 + ((x + sourceX) & 1023)) * 2;
+        u32 target = (((y + targetY) & 511) * 1024 + ((x + targetX) & 1023)) * 2;
+        u16 pixel = eye.readHalf(source);
+        if((pixel >> 15 & io.checkMaskBit) == 0) eye.writeHalf(target, pixel | io.forceMaskBit << 15);
       }
     }
     return queue.reset();

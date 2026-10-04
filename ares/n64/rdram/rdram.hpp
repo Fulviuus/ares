@@ -98,6 +98,7 @@ struct RDRAM : Memory::RCP<RDRAM> {
       }
       Memory::Writable::write<Size>(address, value);
       self.hidden.update<Size>(address, value);
+      if(unlikely(vulkan.stereo.enabled)) vulkan.writeRdram(address, Size, value);
     }
 
     template<u32 Size>
@@ -118,6 +119,7 @@ struct RDRAM : Memory::RCP<RDRAM> {
       }
       Memory::Writable::write<Size>(address, value);
       self.hidden.ebusScatter<Size>(address, value);
+      if(unlikely(vulkan.stereo.enabled)) vulkan.writeRdram(address, Size, value, true);
     }
 
     template<u32 Size>
@@ -146,6 +148,9 @@ struct RDRAM : Memory::RCP<RDRAM> {
         Memory::Writable::write<Word>(address | 0x1c, value[7]);
       }
       self.hidden.updateBurst<Size>(address, value);
+      if(unlikely(vulkan.stereo.enabled)) {
+        for(u32 offset = 0; offset < Size; offset += 4) vulkan.writeRdram(address + offset, Word, value[offset / 4]);
+      }
     }
 
     template<u32 Size>

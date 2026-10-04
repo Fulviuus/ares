@@ -79,6 +79,14 @@ auto Settings::process(bool load) -> void {
   bind(boolean, "Video/InterframeBlending", video.interframeBlending);
   bind(boolean, "Video/Overscan", video.overscan);
   bind(boolean, "Video/PixelAccuracy", video.pixelAccuracy);
+  bind(string,  "Video/Stereo/Mode", video.stereoMode);
+  bind(natural, "Video/Stereo/Depth", video.stereoDepth);
+  bind(natural, "Video/Stereo/Convergence", video.stereoConvergence);
+  bind(boolean, "Video/Stereo/SwapEyes", video.stereoSwapEyes);
+  bind(boolean, "Video/Stereo/FullWidth", video.stereoFullWidth);
+  video.stereoDepth = min(video.stereoDepth, 100u);
+  video.stereoConvergence = min(video.stereoConvergence, 100u);
+  if(video.stereoMode != "Side by Side") video.stereoMode = "Off";
 
   bind(string,  "Audio/Device", audio.device);
   bind(natural, "Audio/Frequency", audio.frequency);

@@ -98,6 +98,11 @@ auto PlayStation::load() -> LoadResult {
     return result;
   }
 
+  ares::PlayStation::option("Stereoscopic 3D", settings.video.stereoMode == "Side by Side");
+  ares::PlayStation::option("Stereo Depth", settings.video.stereoDepth);
+  ares::PlayStation::option("Stereo Convergence", settings.video.stereoConvergence);
+  ares::PlayStation::option("Stereo Swap Eyes", settings.video.stereoSwapEyes);
+  ares::PlayStation::option("Stereo Full Width", settings.video.stereoFullWidth);
   ares::PlayStation::option("Homebrew Mode", settings.developer.homebrewMode);
   ares::PlayStation::option("Recompiler", !settings.developer.forceInterpreter);
 

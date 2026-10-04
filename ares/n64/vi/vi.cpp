@@ -25,6 +25,7 @@ auto VI::load(Node::Object parent) -> void {
     height *= vulkan.outputUpscale;
   }
   #endif
+  if(vulkan.enable && vulkan.stereo.enabled) width *= 2;
   screen = node->append<Node::Video::Screen>("Screen", width, height);
   screen->setRefresh(std::bind_front(&VI::refresh, this));
   screen->refreshRateHint(Region::PAL() ? 50 : 60); // TODO: More accurate refresh rate hint
@@ -64,6 +65,9 @@ auto VI::load(Node::Object parent) -> void {
   // same aspect ratio as NTSC.
   Region::PAL() ? screen->setAspect(12, 10) : screen->setAspect(120, 120);
 
+  if(vulkan.enable && vulkan.stereo.enabled && vulkan.stereo.fullWidth) {
+    screen->setSize(screen->width() * 2, screen->height());
+  }
   debugger.load(node);
 }
 
@@ -138,23 +142,32 @@ auto VI::main() -> void {
 auto VI::refresh() -> void {
   #if defined(VULKAN)
   if(vulkan.enable && gpuOutputValid) {
-    const u8* rgba = nullptr;
-    u32 width = 0, height = 0;
-    vulkan.mapScanoutRead(rgba, width, height);
-    if(rgba) {
-      screen->setViewport(0, 0, width, height);
-      for(u32 y : range(height)) {
-        auto source = rgba + width * y * sizeof(u32);
-        auto target = screen->pixels(1).data() + y * vulkan.outputUpscale * 640;
-        for(u32 x : range(width)) {
-          target[x] = source[x * 4 + 0] << 16 | source[x * 4 + 1] << 8 | source[x * 4 + 2] << 0;
+    const bool stereo = vulkan.stereoActive();
+    const unsigned eyes = stereo ? 2 : 1;
+    const u32 logicalWidth = vulkan.outputUpscale * 640 * (stereo && vulkan.stereo.fullWidth ? 2 : 1);
+    if(screen->width() != logicalWidth) screen->setSize(logicalWidth, screen->height());
+    const u32 pitch = screen->canvasWidth();
+    u32 viewWidth = 1, viewHeight = 1;
+    screen->pixels(1).data()[0] = 0;
+    for(unsigned eye = 0; eye < eyes; ++eye) {
+      const u8* rgba = nullptr;
+      u32 width = 0, height = 0;
+      int index = stereo ? int(eye) : -1;
+      vulkan.mapScanoutRead(rgba, width, height, index);
+      if(rgba && width <= pitch / eyes && height <= screen->canvasHeight()) {
+        viewWidth = width * eyes;
+        viewHeight = height;
+        for(u32 y : range(height)) {
+          auto source = rgba + width * y * sizeof(u32);
+          auto target = screen->pixels(1).data() + y * pitch + eye * width;
+          for(u32 x : range(width)) {
+            target[x] = source[x * 4 + 0] << 16 | source[x * 4 + 1] << 8 | source[x * 4 + 2];
+          }
         }
       }
-    } else {
-      screen->setViewport(0, 0, 1, 1);
-      screen->pixels(1).data()[0] = 0;
+      vulkan.unmapScanoutRead(index);
     }
-    vulkan.unmapScanoutRead();
+    screen->setViewport(0, 0, viewWidth, viewHeight);
     vulkan.endScanout();
 
     if(Model::Aleck64()) aleck64.vdp.render(screen); //aleck64 supports overlay graphics
@@ -194,7 +207,7 @@ auto VI::refresh() -> void {
     for(i32 dy = dy0; dy < dy1; dy++) {
       if(!io.serrate || (dy & 1) == !io.field) {
         u32 address = vi.io.dramAddress + (y0 >> 11) * pitch * 2;
-        auto line = screen->pixels(1).data() + (dy - vscan_start) * hscan_len;
+        auto line = screen->pixels(1).data() + (dy - vscan_start) * screen->canvasWidth();
         u32 x0 = vi.io.xsubpixel + vi.io.xscale * (dx0 - vi.io.hstart);
         for(i32 dx = dx0; dx < dx1; dx++) {
           u16 data = rdram.ram.read<Half>(address + (x0 >> 10) * 2, RBusDevice::VI_DMA);
@@ -212,7 +225,7 @@ auto VI::refresh() -> void {
     for(i32 dy = dy0; dy < dy1; dy++) {
       if(!io.serrate || (dy & 1) == !io.field) {
         u32 address = vi.io.dramAddress + (y0 >> 11) * pitch * 4;
-        auto line = screen->pixels(1).data() + (dy - vscan_start) * hscan_len;
+        auto line = screen->pixels(1).data() + (dy - vscan_start) * screen->canvasWidth();
         u32 x0 = vi.io.xsubpixel + vi.io.xscale * (dx0 - vi.io.hstart);
         for(i32 dx = dx0; dx < dx1; dx++) {
           u32 data = rdram.ram.read<Word>(address + (x0 >> 10) * 4, RBusDevice::VI_DMA);

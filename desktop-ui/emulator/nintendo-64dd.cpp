@@ -79,6 +79,11 @@ auto Nintendo64DD::load() -> LoadResult {
     return result;
   }
 
+  ares::Nintendo64::option("Stereoscopic 3D", settings.video.stereoMode == "Side by Side");
+  ares::Nintendo64::option("Stereo Depth", settings.video.stereoDepth);
+  ares::Nintendo64::option("Stereo Convergence", settings.video.stereoConvergence);
+  ares::Nintendo64::option("Stereo Swap Eyes", settings.video.stereoSwapEyes);
+  ares::Nintendo64::option("Stereo Full Width", settings.video.stereoFullWidth);
   ares::Nintendo64::option("Quality", settings.nintendo64.quality);
   ares::Nintendo64::option("Supersampling", settings.nintendo64.supersampling);
 #if defined(VULKAN)

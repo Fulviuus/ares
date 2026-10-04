@@ -23,6 +23,11 @@ auto load(Node::System& node, string name) -> bool {
 }
 
 auto option(string name, string value) -> bool {
+  if(name == "Stereoscopic 3D") vulkan.stereo.enabled = value.boolean();
+  if(name == "Stereo Depth") vulkan.stereo.depth = min(value.natural(), 100ull);
+  if(name == "Stereo Convergence") vulkan.stereo.convergence = min(value.natural(), 100ull);
+  if(name == "Stereo Swap Eyes") vulkan.stereo.swapEyes = value.boolean();
+  if(name == "Stereo Full Width") vulkan.stereo.fullWidth = value.boolean();
   #if defined(VULKAN)
   if(name == "Enable GPU acceleration") vulkan.enable = value.boolean();
   if(name == "Quality" && value == "SD" ) vulkan.internalUpscale = 1;
@@ -95,6 +100,7 @@ auto System::load(Node::System& root, string name) -> bool {
   information.name = "Nintendo 64";
 
   if(name == "[SETA] Aleck 64") {
+    vulkan.stereo.enabled = false;
     information.name = "Arcade";
     information.model = Model::Aleck64;
     information.region = Region::NTSC;

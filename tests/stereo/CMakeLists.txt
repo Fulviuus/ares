@@ -1,0 +1,12 @@
+if(NOT "n64" IN_LIST ARES_CORES OR NOT "ps1" IN_LIST ARES_CORES)
+  message(FATAL_ERROR "Stereo tests require n64 and ps1 in ARES_CORES")
+endif()
+add_executable(stereo-tests stereo.cpp)
+target_include_directories(stereo-tests PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/thirdparty)
+target_link_libraries(stereo-tests PRIVATE ares::ares ares::nall)
+add_test(NAME stereo-rendering COMMAND stereo-tests)
+
+set_tests_properties(stereo-rendering PROPERTIES TIMEOUT 120)
+if(TARGET MoltenVK::MoltenVK)
+  set_tests_properties(stereo-rendering PROPERTIES ENVIRONMENT "GRANITE_VULKAN_LIBRARY=$<TARGET_FILE:MoltenVK::MoltenVK>")
+endif()

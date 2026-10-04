@@ -21,6 +21,7 @@
  */
 
 #include "rdp_device.hpp"
+#include "rdp_stereo.hpp"
 #include "rdp_common.hpp"
 #include <chrono>
 
@@ -343,6 +344,12 @@ static void decode_z_setup(AttributeSetup &attr, const uint32_t *words)
 	attr.dzdy = words[3];
 }
 
+void CommandProcessor::apply_stereo(TriangleSetup &setup, AttributeSetup &attr)
+{
+	if (!stereo_primitive_depth)
+		stereo_transform(setup, attr, stereo_separation * stereo_width, stereo_convergence);
+}
+
 void CommandProcessor::op_fill_triangle(const uint32_t *words)
 {
 	TriangleSetup setup = {};
@@ -366,6 +373,7 @@ void CommandProcessor::op_shade_z_buffer_triangle(const uint32_t *words)
 	decode_triangle_setup(setup, words);
 	decode_rgba_setup(attr, words + 8);
 	decode_z_setup(attr, words + 24);
+	apply_stereo(setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -377,6 +385,7 @@ void CommandProcessor::op_shade_texture_z_buffer_triangle(const uint32_t *words)
 	decode_rgba_setup(attr, words + 8);
 	decode_tex_setup(attr, words + 24);
 	decode_z_setup(attr, words + 40);
+	apply_stereo(setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -386,6 +395,7 @@ void CommandProcessor::op_fill_z_buffer_triangle(const uint32_t *words)
 	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
 	decode_z_setup(attr, words + 8);
+	apply_stereo(setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -405,6 +415,7 @@ void CommandProcessor::op_texture_z_buffer_triangle(const uint32_t *words)
 	decode_triangle_setup(setup, words);
 	decode_tex_setup(attr, words + 8);
 	decode_z_setup(attr, words + 24);
+	apply_stereo(setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -423,6 +434,7 @@ void CommandProcessor::op_set_color_image(const uint32_t *words)
 	unsigned fmt = (words[0] >> 21) & 7;
 	unsigned size = (words[0] >> 19) & 3;
 	unsigned width = (words[0] & 1023) + 1;
+	stereo_width = width;
 	unsigned addr = words[1] & 0xffffff;
 
 	FBFormat fbfmt;
@@ -536,7 +548,8 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 
 	renderer.set_static_rasterization_state(static_state);
 	renderer.set_depth_blend_state(depth_blend);
-	renderer.set_enable_primitive_depth(bool(words[1] & (1 << 2)));
+	stereo_primitive_depth = bool(words[1] & (1 << 2));
+	renderer.set_enable_primitive_depth(stereo_primitive_depth);
 }
 
 void CommandProcessor::op_set_texture_image(const uint32_t *words)
